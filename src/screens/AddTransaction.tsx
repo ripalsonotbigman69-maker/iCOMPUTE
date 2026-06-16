@@ -19,10 +19,11 @@ export const AddTransaction = ({ open, onOpenChange }: { open: boolean; onOpenCh
   const [category, setCategory] = useState<CategoryKey | null>(null);
   const [desc, setDesc] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [date, setDate] = useState<string>(new Date().toISOString().slice(0,10));
 
   const list = kind === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
-  const reset = () => { setAmount(""); setCategory(null); setDesc(""); setKind("expense"); };
+  const reset = () => { setAmount(""); setCategory(null); setDesc(""); setKind("expense"); setDate(new Date().toISOString().slice(0,10)); };
 
 const save = () => {
     console.log("Save button clicked! Raw amount state:", amount);
@@ -42,11 +43,11 @@ const save = () => {
     
     try {
       addTransaction({
-        kind, 
-        amount: amt, 
-        category, 
+        kind,
+        amount: amt,
+        category,
         description: desc || CATEGORIES[category].label,
-        date: new Date().toISOString(),
+        date: new Date(date).toISOString(),
       });
       
       toast({ title: "Transaction saved successfully" });
@@ -124,9 +125,12 @@ const save = () => {
 
           <div>
             <p className="text-[11px] text-muted-foreground mb-1.5">Date</p>
-            <div className="h-12 px-4 rounded-xl bg-input border border-border flex items-center text-sm">
-              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-            </div>
+            <Input
+              type="date"
+              value={date}
+              onChange={(e: any) => setDate(e.target.value)}
+              className="h-12 px-4 rounded-xl bg-input border border-border text-sm"
+            />
           </div>
 
           <Button onClick={save} className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-glow">
