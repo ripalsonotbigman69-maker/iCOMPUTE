@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Plus } from "lucide-react";
 import { useApp } from "@/state/AppState";
 import { CATEGORIES } from "@/lib/categories";
@@ -12,35 +12,53 @@ export default function Insight() {
   const { transactions, setTab } = useApp();
   const [range, setRange] = useState<Range>("Monthly");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [open, setOpen] = useState(false);
 
-  const { points, total, count, byCat, predictedExpense, predictionSummary, predictedCategory, availableYears } = useMemo(() => {
+  const { points, total, count, byCat, predictedExpense, predictionSummary, predictedCategory, availableYears, availableMonths } = useMemo(() => {
     const now = new Date();
-    const currentYear = new Date().getFullYear();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
     const expenseTransactions = transactions.filter((tx) => tx.kind === "expense");
     const yearsSet = new Set<number>([currentYear]);
     expenseTransactions.forEach((tx) => yearsSet.add(new Date(tx.date).getFullYear()));
     const availableYears = Array.from(yearsSet).sort((a, b) => b - a);
 
+    const monthsSet = new Set<number>();
+    expenseTransactions.forEach((tx) => {
+      const d = new Date(tx.date);
+      if (d.getFullYear() === selectedYear) monthsSet.add(d.getMonth() + 1);
+    });
+    if (monthsSet.size === 0) monthsSet.add(currentMonth);
+    const availableMonths = Array.from(monthsSet).sort((a, b) => a - b);
+    const effectiveYear = availableYears.includes(selectedYear) ? selectedYear : availableYears[0];
+    const effectiveMonth = availableMonths.includes(selectedMonth) ? selectedMonth : availableMonths[0];
+
     const buckets: { label: string; value: number }[] = [];
     let bucketCount = 0, msPerBucket = 0;
     if (range === "Daily") { bucketCount = 24; msPerBucket = 3600 * 1000; }
-    if (range === "Weekly") { bucketCount = 7; msPerBucket = 24 * 3600 * 1000; }
-    if (range === "Monthly") { bucketCount = 30; msPerBucket = 24 * 3600 * 1000; }
-    if (range === "Yearly") { bucketCount = 12; }
+    if (range === "Weekly") { bucketCount = effectiveMonth ? new Date(effectiveYear, effectiveMonth, 0).getDate() : 0; }
+    if (range === "Monthly") { bucketCount = 12; }
+    if (range === "Yearly") { bucketCount = availableYears.length; }
 
     if (range === "Yearly") {
-      for (let month = 0; month < 12; month++) {
-        const t = new Date(selectedYear, month, 1);
+      availableYears.forEach((year) => buckets.push({ label: String(year), value: 0 }));
+    } else if (range === "Monthly") {
+      for (let month = 1; month <= 12; month++) {
+        const t = new Date(effectiveYear, month - 1, 1);
         buckets.push({ label: t.toLocaleDateString("en-US", { month: "short" }), value: 0 });
+      }
+    } else if (range === "Weekly") {
+      const daysInMonth = effectiveMonth ? new Date(effectiveYear, effectiveMonth, 0).getDate() : 30;
+      for (let day = 1; day <= daysInMonth; day++) {
+        buckets.push({ label: String(day), value: 0 });
       }
     } else {
       for (let i = bucketCount - 1; i >= 0; i--) {
         const t = new Date(now.getTime() - i * msPerBucket);
-        const label =
-          range === "Daily" ? `${t.getHours()}h` :
-          range === "Weekly" ? t.toLocaleDateString("en-US", { weekday: "short" }) :
-          t.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const label = range === "Daily"
+          ? `${t.getHours()}h`
+          : t.toLocaleDateString("en-US", { weekday: "short" });
         buckets.push({ label, value: 0 });
       }
     }
@@ -50,19 +68,23 @@ export default function Insight() {
     expenseTransactions.forEach((tx) => {
       const txDate = new Date(tx.date);
       if (range === "Yearly") {
-        if (txDate.getFullYear() !== selectedYear) return;
+        const yearIndex = availableYears.indexOf(txDate.getFullYear());
+        if (yearIndex === -1) return;
+        buckets[yearIndex].value += tx.amount;
+      } else if (range === "Monthly") {
+        if (txDate.getFullYear() !== effectiveYear) return;
         buckets[txDate.getMonth()].value += tx.amount;
-        total += tx.amount; count++;
-        byCat[tx.category] = (byCat[tx.category] || 0) + tx.amount;
-        return;
-      }
-      const diff = now.getTime() - txDate.getTime();
-      const idx = bucketCount - 1 - Math.floor(diff / msPerBucket);
-      if (idx >= 0 && idx < bucketCount) {
+      } else if (range === "Weekly") {
+        if (txDate.getFullYear() !== effectiveYear || txDate.getMonth() + 1 !== effectiveMonth) return;
+        buckets[txDate.getDate() - 1].value += tx.amount;
+      } else {
+        const diff = now.getTime() - txDate.getTime();
+        const idx = bucketCount - 1 - Math.floor(diff / msPerBucket);
+        if (idx < 0 || idx >= bucketCount) return;
         buckets[idx].value += tx.amount;
-        total += tx.amount; count++;
-        byCat[tx.category] = (byCat[tx.category] || 0) + tx.amount;
       }
+      total += tx.amount; count++;
+      byCat[tx.category] = (byCat[tx.category] || 0) + tx.amount;
     });
 
     const lastSixMonths: string[] = [];
@@ -108,8 +130,16 @@ export default function Insight() {
       ? `Predicted next month: ${formatPeso(predictedExpense)} · ${trendLabel}`
       : "Add expense data to see predictions.";
 
-    return { points: buckets, total, count, byCat, predictedExpense, predictionSummary, predictedCategory, availableYears };
-  }, [transactions, range, selectedYear]);
+    return { points: buckets, total, count, byCat, predictedExpense, predictionSummary, predictedCategory, availableYears, availableMonths };
+  }, [transactions, range, selectedYear, selectedMonth]);
+
+  useEffect(() => {
+    if (!availableYears.includes(selectedYear)) setSelectedYear(availableYears[0]);
+  }, [availableYears, selectedYear]);
+
+  useEffect(() => {
+    if (!availableMonths.includes(selectedMonth)) setSelectedMonth(availableMonths[0]);
+  }, [availableMonths, selectedMonth]);
 
   const max = Math.max(...points.map((p) => p.value), 1);
   const W = 320, H = 140, PAD = 8;
@@ -151,7 +181,7 @@ export default function Insight() {
           <p className="mt-1 text-[11px] text-muted-foreground">{count} transactions</p>
         </div>
 
-        {range === 'Yearly' && availableYears.length > 0 && (
+        {(range === 'Yearly' || range === 'Monthly' || range === 'Weekly') && availableYears.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {availableYears.map((year) => (
               <button
@@ -163,6 +193,23 @@ export default function Insight() {
                 )}
               >
                 {year}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {range === 'Weekly' && availableMonths.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {availableMonths.map((month) => (
+              <button
+                key={month}
+                onClick={() => setSelectedMonth(month)}
+                className={cn(
+                  'rounded-2xl border px-3 py-2 text-xs font-semibold transition-smooth',
+                  selectedMonth === month ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground'
+                )}
+              >
+                {new Date(selectedYear, month - 1, 1).toLocaleDateString('en-US', { month: 'short' })}
               </button>
             ))}
           </div>
