@@ -11,32 +11,52 @@ type Range = "Daily" | "Weekly" | "Monthly" | "Yearly";
 export default function Insight() {
   const { transactions, setTab } = useApp();
   const [range, setRange] = useState<Range>("Monthly");
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [open, setOpen] = useState(false);
 
-  const { points, total, count, byCat, predictedExpense, predictionSummary, predictedCategory } = useMemo(() => {
+  const { points, total, count, byCat, predictedExpense, predictionSummary, predictedCategory, availableYears } = useMemo(() => {
     const now = new Date();
+    const currentYear = new Date().getFullYear();
     const expenseTransactions = transactions.filter((tx) => tx.kind === "expense");
+    const yearsSet = new Set<number>([currentYear]);
+    expenseTransactions.forEach((tx) => yearsSet.add(new Date(tx.date).getFullYear()));
+    const availableYears = Array.from(yearsSet).sort((a, b) => b - a);
+
     const buckets: { label: string; value: number }[] = [];
     let bucketCount = 0, msPerBucket = 0;
     if (range === "Daily") { bucketCount = 24; msPerBucket = 3600 * 1000; }
     if (range === "Weekly") { bucketCount = 7; msPerBucket = 24 * 3600 * 1000; }
     if (range === "Monthly") { bucketCount = 30; msPerBucket = 24 * 3600 * 1000; }
-    if (range === "Yearly") { bucketCount = 12; msPerBucket = 30 * 24 * 3600 * 1000; }
+    if (range === "Yearly") { bucketCount = 12; }
 
-    for (let i = bucketCount - 1; i >= 0; i--) {
-      const t = new Date(now.getTime() - i * msPerBucket);
-      const label =
-        range === "Daily" ? `${t.getHours()}h` :
-        range === "Weekly" ? t.toLocaleDateString("en-US", { weekday: "short" }) :
-        range === "Monthly" ? t.toLocaleDateString("en-US", { month: "short", day: "numeric" }) :
-        t.toLocaleDateString("en-US", { month: "short" });
-      buckets.push({ label, value: 0 });
+    if (range === "Yearly") {
+      for (let month = 0; month < 12; month++) {
+        const t = new Date(selectedYear, month, 1);
+        buckets.push({ label: t.toLocaleDateString("en-US", { month: "short" }), value: 0 });
+      }
+    } else {
+      for (let i = bucketCount - 1; i >= 0; i--) {
+        const t = new Date(now.getTime() - i * msPerBucket);
+        const label =
+          range === "Daily" ? `${t.getHours()}h` :
+          range === "Weekly" ? t.toLocaleDateString("en-US", { weekday: "short" }) :
+          t.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        buckets.push({ label, value: 0 });
+      }
     }
 
     let total = 0, count = 0;
     const byCat: Record<string, number> = {};
     expenseTransactions.forEach((tx) => {
-      const diff = now.getTime() - new Date(tx.date).getTime();
+      const txDate = new Date(tx.date);
+      if (range === "Yearly") {
+        if (txDate.getFullYear() !== selectedYear) return;
+        buckets[txDate.getMonth()].value += tx.amount;
+        total += tx.amount; count++;
+        byCat[tx.category] = (byCat[tx.category] || 0) + tx.amount;
+        return;
+      }
+      const diff = now.getTime() - txDate.getTime();
       const idx = bucketCount - 1 - Math.floor(diff / msPerBucket);
       if (idx >= 0 && idx < bucketCount) {
         buckets[idx].value += tx.amount;
@@ -88,8 +108,8 @@ export default function Insight() {
       ? `Predicted next month: ${formatPeso(predictedExpense)} · ${trendLabel}`
       : "Add expense data to see predictions.";
 
-    return { points: buckets, total, count, byCat, predictedExpense, predictionSummary, predictedCategory };
-  }, [transactions, range]);
+    return { points: buckets, total, count, byCat, predictedExpense, predictionSummary, predictedCategory, availableYears };
+  }, [transactions, range, selectedYear]);
 
   const max = Math.max(...points.map((p) => p.value), 1);
   const W = 320, H = 140, PAD = 8;
@@ -130,6 +150,23 @@ export default function Insight() {
           <p className="mt-1 text-3xl font-bold">{formatPeso(total)}</p>
           <p className="mt-1 text-[11px] text-muted-foreground">{count} transactions</p>
         </div>
+
+        {range === 'Yearly' && availableYears.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {availableYears.map((year) => (
+              <button
+                key={year}
+                onClick={() => setSelectedYear(year)}
+                className={cn(
+                  'rounded-2xl border px-3 py-2 text-xs font-semibold transition-smooth',
+                  selectedYear === year ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground'
+                )}
+              >
+                {year}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="mt-4 rounded-2xl bg-card border border-border p-4">
           <div className="flex items-center justify-between">
