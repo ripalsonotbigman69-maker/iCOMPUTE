@@ -1,0 +1,27 @@
+id,owner_email,kind,amount,category,description,date,created_at
+1,icompute@gmail.com,income,23000.0,salary,Monthly salary,2026-06-07T17:33:44.924838Z,2026-06-08 17:33:44
+2,icompute@gmail.com,expense,450.0,food,Italian Lunch,2026-06-07T17:33:44.924838Z,2026-06-08 17:33:44
+3,icompute@gmail.com,expense,1200.0,shopping,New shoes,2026-06-06T17:33:44.924838Z,2026-06-08 17:33:44
+4,icompute@gmail.com,expense,130.0,transport,Gas fill-up,2026-06-05T17:33:44.924838Z,2026-06-08 17:33:44
+5,icompute@gmail.com,expense,879.99,bills,Internet bill,2026-06-04T17:33:44.924838Z,2026-06-08 17:33:44
+6,icompute@gmail.com,expense,150.0,food,Lunch,2026-06-08T17:33:44.924838Z,2026-06-08 17:33:44
+7,icompute@gmail.com,expense,320.0,entertainment,Movie night,2026-06-03T17:33:44.924838Z,2026-06-08 17:33:44
+8,icompute@gmail.com,expense,980.0,bills,Electric bill,2026-06-02T17:33:44.924838Z,2026-06-08 17:33:44
+9,icompute@gmail.com,income,6054.99,gift,Birthday gift,2026-06-01T17:33:44.924838Z,2026-06-08 17:33:44
+10,newaccount@gmail.com,income,23000.0,salary,Monthly salary,2026-06-07T19:14:12.384117Z,2026-06-08 19:14:12
+11,newaccount@gmail.com,expense,450.0,food,Italian Lunch,2026-06-07T19:14:12.384117Z,2026-06-08 19:14:12
+12,newaccount@gmail.com,expense,1200.0,shopping,New shoes,2026-06-06T19:14:12.384117Z,2026-06-08 19:14:12
+13,newaccount@gmail.com,expense,130.0,transport,Gas fill-up,2026-06-05T19:14:12.384117Z,2026-06-08 19:14:12
+14,newaccount@gmail.com,expense,879.99,bills,Internet bill,2026-06-04T19:14:12.384117Z,2026-06-08 19:14:12
+15,newaccount@gmail.com,expense,150.0,food,Lunch,2026-06-08T19:14:12.384117Z,2026-06-08 19:14:12
+16,newaccount@gmail.com,expense,320.0,entertainment,Movie night,2026-06-03T19:14:12.384117Z,2026-06-08 19:14:12
+17,newaccount@gmail.com,expense,980.0,bills,Electric bill,2026-06-02T19:14:12.384117Z,2026-06-08 19:14:12
+18,newaccount@gmail.com,income,6054.99,gift,Birthday gift,2026-06-01T19:14:12.384117Z,2026-06-08 19:14:12
+19,try@gmail.com,income,7.0,gift,Gift,2026-06-08T20:06:48.233Z,2026-06-08 20:06:48
+20,try@gmail.com,expense,1.0,entertainment,Entertainment,2026-06-08T20:07:04.977Z,2026-06-08 20:07:04
+21,try@gmail.com,income,900000.0,salary,Salary,2026-06-08T20:07:26.057Z,2026-06-08 20:07:26
+22,try@gmail.com,expense,5000.0,shopping,Shopping,2026-06-08T20:07:39.898Z,2026-06-08 20:07:39
+23,try@gmail.com,expense,20000.0,healthcare,Healthcare,2026-06-09T14:03:56.519Z,2026-06-09 14:03:56
+24,try@gmail.com,expense,8000.0,bills,Bills & Utilities,2026-06-09T14:04:59.064Z,2026-06-09 14:04:59
+25,try@gmail.com,expense,67000.0,others,Others,2026-06-09T14:05:19.160Z,2026-06-09 14:05:19
+26,try@gmail.com,expense,20000.0,entertainment,needs :),2026-06-09T14:37:48.499Z,2026-06-09 14:37:48

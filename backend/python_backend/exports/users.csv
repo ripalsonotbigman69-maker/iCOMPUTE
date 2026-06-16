@@ -1,0 +1,8 @@
+email,first_name,last_name,monthly_budget,pin,password_hash,password_salt
+icompute@gmail.com,User,,23000.0,,,
+testuser123@example.com,Test,User,23000.0,,4e0b5cd63d4f825eeb8a85f260978fabd8fcea5ef20fb4e97c9d52fdc907b5db,3af32115e4462e433bdb9c53dd2bd2c1
+newaccount@gmail.com,new,new,23000.0,1238,dc8e7a24d84678d412460eeb371eb03551892a54ba9c70a7cc32d466a3cfdf11,b7c4e42a68d1257226980f1f1d210f09
+freshcheck@example.com,Fresh,Check,0.0,,,
+another@gmail.com,hmm,hmm,23000.0,1234,497e8186612949d3925bdb2edfbc0d9e785256ff2da6a9527a05a3a85be8f260,507467ad2f35b0b19e5ce6d7c50de715
+try@gmail.com,dawg,dawg,80000.0,1590,1140ef6a74ede903a0faad04c9376620d34e1a0eb7f81b5166dd2430828f426e,91286b922ca650e357a678b3d6b25077
+juliet@gmail.com,dear,juliet,23000.0,,d4d60b9fd74d232e963a8b56aae0baea91444d7aad9254c71045f700f7914b10,63947b05b0d0a41cd6606578b1b5480f
