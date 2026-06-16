@@ -28,26 +28,34 @@ export const AddTransaction = ({ open, onOpenChange }: { open: boolean; onOpenCh
 const save = () => {
     console.log("Save button clicked! Raw amount state:", amount);
     const amt = parseFloat(amount);
-    
+    const selectedDate = new Date(date);
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+
     if (isNaN(amt) || amt <= 0) {
       console.log("Stuck on amount validation. Parsed amount:", amt);
       return toast({ title: "Enter a valid amount" });
     }
-    
+
     if (!category) {
       console.log("Stuck on category validation.");
       return toast({ title: "Pick a category" });
     }
 
+    if (selectedDate > now) {
+      console.log("Stuck on future date validation.");
+      return toast({ title: "Date cannot be in the future" });
+    }
+
     console.log("Validation passed! Sending payload to addTransaction...");
-    
+
     try {
       addTransaction({
         kind,
         amount: amt,
         category,
         description: desc || CATEGORIES[category].label,
-        date: new Date(date).toISOString(),
+        date: selectedDate.toISOString(),
       });
       
       toast({ title: "Transaction saved successfully" });
