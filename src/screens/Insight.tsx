@@ -12,10 +12,9 @@ export default function Insight() {
   const { transactions, setTab } = useApp();
   const [range, setRange] = useState<Range>("Monthly");
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [open, setOpen] = useState(false);
 
-  const { points, total, count, byCat, predictedExpense, predictionSummary, predictedCategory, availableYears, availableMonths } = useMemo(() => {
+  const { points, total, count, byCat, predictedExpense, predictionSummary, predictedCategory, availableYears } = useMemo(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
@@ -32,7 +31,7 @@ export default function Insight() {
     if (monthsSet.size === 0) monthsSet.add(currentMonth);
     const availableMonths = Array.from(monthsSet).sort((a, b) => a - b);
     const effectiveYear = availableYears.includes(selectedYear) ? selectedYear : availableYears[0];
-    const effectiveMonth = availableMonths.includes(selectedMonth) ? selectedMonth : availableMonths[0];
+    const effectiveMonth = availableMonths[0];
 
     const buckets: { label: string; value: number }[] = [];
     let bucketCount = 0, msPerBucket = 0;
@@ -130,16 +129,12 @@ export default function Insight() {
       ? `Predicted next month: ${formatPeso(predictedExpense)} · ${trendLabel}`
       : "Add expense data to see predictions.";
 
-    return { points: buckets, total, count, byCat, predictedExpense, predictionSummary, predictedCategory, availableYears, availableMonths };
-  }, [transactions, range, selectedYear, selectedMonth]);
+    return { points: buckets, total, count, byCat, predictedExpense, predictionSummary, predictedCategory, availableYears };
+  }, [transactions, range, selectedYear]);
 
   useEffect(() => {
     if (!availableYears.includes(selectedYear)) setSelectedYear(availableYears[0]);
   }, [availableYears, selectedYear]);
-
-  useEffect(() => {
-    if (!availableMonths.includes(selectedMonth)) setSelectedMonth(availableMonths[0]);
-  }, [availableMonths, selectedMonth]);
 
   const max = Math.max(...points.map((p) => p.value), 1);
   const W = 320, H = 140, PAD = 8;
@@ -198,22 +193,6 @@ export default function Insight() {
           </div>
         )}
 
-        {range === 'Weekly' && availableMonths.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {availableMonths.map((month) => (
-              <button
-                key={month}
-                onClick={() => setSelectedMonth(month)}
-                className={cn(
-                  'rounded-2xl border px-3 py-2 text-xs font-semibold transition-smooth',
-                  selectedMonth === month ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground'
-                )}
-              >
-                {new Date(selectedYear, month - 1, 1).toLocaleDateString('en-US', { month: 'short' })}
-              </button>
-            ))}
-          </div>
-        )}
 
         <div className="mt-4 rounded-2xl bg-card border border-border p-4">
           <div className="flex items-center justify-between">
