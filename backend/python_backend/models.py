@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, Any
 
-from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, func
+from sqlalchemy import Column, String, Float, Integer, DateTime, ForeignKey, Identity, func
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -55,14 +55,14 @@ class User(Base):
 
 class Transaction(Base):
     __tablename__ = 'transactions'
-    id: Any = Column(Integer, primary_key=True, autoincrement=True)
+    id: Any = Column(Integer, Identity(start=1, cycle=False), primary_key=True)
     owner_email: Any = Column(String(255), ForeignKey('users.email'))
     kind: Any = Column(String(50), nullable=False)
     amount: Any = Column(Float, nullable=False)
     category: Any = Column(String(100), nullable=True)
     description: Any = Column(String(500), nullable=True)
-    date: Any = Column(String(50), nullable=False)
-    created_at: Any = Column(DateTime(timezone=True), server_default=func.now())
+    date: Any = Column(DateTime(timezone=True), nullable=False)
+    created_at: Any = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     owner: Any = relationship('User')
 
     def __init__(
@@ -72,7 +72,7 @@ class Transaction(Base):
         amount: float,
         category: str = 'others',
         description: str = '',
-        date: str = '',
+        date: datetime | None = None,
     ):
         self.owner_email = owner_email
         self.kind = kind

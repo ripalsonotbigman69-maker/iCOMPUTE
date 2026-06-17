@@ -31,3 +31,11 @@ Bash: npm install
 Bash: npm run dev
 
 3. Access the app at: http://localhost:8080
+
+
+#must keep the backend open 
+vercel --prod 
+
+git add .
+git commit -m "changes"
+git push

@@ -34,7 +34,7 @@ interface AppCtx {
   signup: (payload: { email: string; password: string; firstName: string; lastName: string }) => Promise<void>;
   verifyPin: (pinValue: string) => Promise<boolean>;
   transactions: Transaction[];
-  addTransaction: (t: Omit<Transaction, "id">) => void;
+  addTransaction: (t: Omit<Transaction, "id">) => Promise<Transaction>;
   balance: number;
   totals: { income: number; expense: number };
   colorTheme: ColorTheme;
@@ -135,24 +135,28 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addTransaction = (t: Omit<Transaction, "id">) => {
+  const addTransaction = async (t: Omit<Transaction, "id">) => {
     // Falls back to a random string generator if the browser blocks crypto.randomUUID
-    const uniqueId = typeof crypto.randomUUID === "function" 
-      ? crypto.randomUUID() 
+    const uniqueId = typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
       : Math.random().toString(36).substring(2, 11);
 
     const nextTransaction = { ...t, id: uniqueId };
-
     setTransactions((prev) => [nextTransaction, ...prev]);
-    void saveTransaction(t, user.email)
-      .then((savedTransaction) => {
-        setTransactions((current) =>
-          current.map((transaction) => (transaction.id === nextTransaction.id ? savedTransaction : transaction))
-        );
-      })
-      .catch(() => {
-        console.warn("Unable to save transaction to backend.");
-      });
+
+    try {
+      const savedTransaction = await saveTransaction(t, user.email);
+      setTransactions((current) =>
+        current.map((transaction) =>
+          transaction.id === nextTransaction.id ? savedTransaction : transaction
+        )
+      );
+      return savedTransaction;
+    } catch (error) {
+      setTransactions((current) => current.filter((transaction) => transaction.id !== nextTransaction.id));
+      console.warn("Unable to save transaction to backend.", error);
+      throw error;
+    }
   };
 
   const totals = useMemo(() => {

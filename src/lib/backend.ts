@@ -1,6 +1,6 @@
 import type { Transaction, UserProfile } from "@/lib/types";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "https://real-women-repeat.loca.lt/";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "https://real-women-repeat.loca.lt";
 
 type BootstrapResponse = {
   user: UserProfile;
@@ -24,19 +24,32 @@ type SignupRequest = {
 };
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
+  
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  
   const headers: Record<string, string> = {
     ...(init?.headers ? (init.headers as Record<string, string>) : {}),
   };
+  
   // only set content-type when there's a body to send
   if (init?.body != null) headers["Content-Type"] = "application/json";
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await fetch(`${API_BASE_URL}${cleanPath}`, {
     headers,
     ...init,
   });
 
   if (!response.ok) {
-    throw new Error(`Request failed with status ${response.status}`);
+    const bodyText = await response.text();
+    let errorMessage = `Request failed with status ${response.status}`;
+    try {
+      const body = JSON.parse(bodyText);
+      if (body.detail) errorMessage += `: ${body.detail}`;
+      else if (body.error) errorMessage += `: ${body.error}`;
+    } catch {
+      if (bodyText) errorMessage += `: ${bodyText}`;
+    }
+    throw new Error(errorMessage);
   }
 
   return (await response.json()) as T;

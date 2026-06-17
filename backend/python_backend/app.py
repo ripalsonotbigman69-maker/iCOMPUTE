@@ -9,6 +9,7 @@ from typing import Any, Generator
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+import traceback
 from sqlalchemy import inspect, text
 from sqlalchemy.orm import Session
 from database import engine, Base, SessionLocal
@@ -22,12 +23,22 @@ except ImportError:
 
 app = FastAPI()
 
+
+@app.exception_handler(Exception)
+def dev_exception_handler(request: Request, exc: Exception):
+    tb = ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+    return JSONResponse(status_code=500, content={
+        'error': str(exc),
+        'trace': tb,
+    })
+
+# Updated CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
-    allow_methods=['*'],
-    allow_headers=['*'],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -46,7 +57,7 @@ def normalize_transaction(tx: models.Transaction) -> dict[str, Any]:
         'amount': float(tx.amount),
         'category': tx.category,
         'description': tx.description,
-        'date': tx.date,
+        'date': tx.date.isoformat() if hasattr(tx.date, 'isoformat') else str(tx.date),
     }
 
 
@@ -130,6 +141,33 @@ def ensure_auth_columns() -> None:
                 connection.execute(text(statement))
 
 
+def ensure_transactions_id_sequence() -> None:
+    inspector: Any = inspect(engine)
+    if not inspector.has_table('transactions'):
+        return
+
+    columns = inspector.get_columns('transactions')
+    id_col = next((column for column in columns if column['name'] == 'id'), None)
+    created_at_col = next((column for column in columns if column['name'] == 'created_at'), None)
+    id_default = id_col.get('default') if id_col else None
+    created_at_default = created_at_col.get('default') if created_at_col else None
+
+    if id_default is None or created_at_default is None:
+        with engine.begin() as connection:
+            if id_default is None:
+                connection.execute(text('CREATE SEQUENCE IF NOT EXISTS transactions_id_seq;'))
+                connection.execute(text(
+                    "ALTER TABLE transactions ALTER COLUMN id SET DEFAULT nextval('transactions_id_seq');"
+                ))
+                connection.execute(text(
+                    "SELECT setval('transactions_id_seq', COALESCE((SELECT MAX(id) FROM transactions), 0) + 1, false);"
+                ))
+            if created_at_default is None:
+                connection.execute(text(
+                    "ALTER TABLE transactions ALTER COLUMN created_at SET DEFAULT now();"
+                ))
+
+
 def password_is_strong(password: str) -> bool:
     if not password or len(password) < 8 or len(password) > 12:
         return False
@@ -144,6 +182,7 @@ def password_is_strong(password: str) -> bool:
 def startup():
     Base.metadata.create_all(bind=engine)
     ensure_auth_columns()
+    ensure_transactions_id_sequence()
 
 
 @app.get('/api/bootstrap', response_model=schemas.BootstrapResponse)
@@ -204,40 +243,6 @@ def login(payload: schemas.AuthLoginRequest, db: Session = Depends(get_db)):
     return build_account_response(user, transactions)
 
 
-def send_email(to_email: str, subject: str, body: str) -> None:
-    smtp_host = os.environ.get('EMAIL_SMTP_HOST')
-    smtp_port = int(os.environ.get('EMAIL_SMTP_PORT', '587'))
-    smtp_user = os.environ.get('EMAIL_SMTP_USER')
-    smtp_pass = os.environ.get('EMAIL_SMTP_PASSWORD')
-    email_from = os.environ.get('EMAIL_FROM')
-
-    if not smtp_host or not smtp_user or not smtp_pass or not email_from:
-        raise RuntimeError('Email service is not configured. Please set EMAIL_SMTP_HOST, EMAIL_SMTP_USER, EMAIL_SMTP_PASSWORD, and EMAIL_FROM.')
-
-    message = EmailMessage()
-    message['Subject'] = subject
-    message['From'] = email_from
-    message['To'] = to_email
-    message.set_content(body)
-
-    context = ssl.create_default_context()
-    with smtplib.SMTP(smtp_host, smtp_port) as server:
-        server.starttls(context=context)
-        server.login(smtp_user, smtp_pass)
-        server.send_message(message)
-
-
-def send_password_reset_email(email: str, token: str) -> None:
-    reset_body = (
-        f'Hello,\n\n'
-        f'We received a request to reset your iCOMPUTE password. Use the code below to reset your password:\n\n'
-        f'{token}\n\n'
-        f'This code expires in 15 minutes. If you did not request a password reset, please ignore this email.\n\n'
-        f'- The iCOMPUTE Team'
-    )
-    send_email(email, 'iCOMPUTE Password Reset', reset_body)
-
-
 @app.post('/api/auth/forgot-password')
 def forgot_password(payload: schemas.AuthForgotPasswordRequest, db: Session = Depends(get_db)) -> dict[str, str]:
     email = payload.email.strip().lower()
@@ -253,11 +258,6 @@ def forgot_password(payload: schemas.AuthForgotPasswordRequest, db: Session = De
     user.password_reset_token = token
     user.password_reset_expires_at = expires_at
     db.commit()
-
-    try:
-        send_password_reset_email(email, token)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f'Unable to send reset email: {exc}')
 
     return {'message': 'Password reset email sent'}
 
@@ -332,7 +332,6 @@ def update_profile(payload: schemas.UserSchema, db: Session = Depends(get_db)):
     user.cash_on_hand = float(payload.cash_on_hand or 0)
     user.credit_card_balance = float(payload.credit_card_balance or 0)
     user.debit_card_balance = float(payload.debit_card_balance or 0)
-    # persist pin if provided (creation or update)
     if getattr(payload, 'pin', None):
         user.pin = payload.pin
     db.commit()
@@ -350,16 +349,40 @@ def create_transaction(payload: schemas.TransactionCreate, db: Session = Depends
     if not owner:
         raise HTTPException(status_code=422, detail='ownerEmail is required')
 
-    date = payload.date or datetime.utcnow().isoformat() + 'Z'
+  
+    try:
+        if payload.date:
+            date_val = datetime.fromisoformat(payload.date.replace('Z', '+00:00'))
+        else:
+            date_val = datetime.utcnow()
+    except Exception:
+        date_val = datetime.utcnow()
+
     tx = models.Transaction(
         owner_email=owner,
         kind=payload.kind,
         amount=float(payload.amount),
         category=payload.category or 'others',
         description=payload.description or '',
-        date=date,
+        date=date_val,
     )
+
     db.add(tx)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+        
     db.refresh(tx)
     return normalize_transaction(tx)
+
+
+@app.get('/internal/db-check')
+def db_check(db: Session = Depends(get_db)):
+    try:
+        # simple check to count users and ensure DB queries succeed
+        count = db.query(models.User).count()
+        return {'ok': True, 'user_count': count}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={'ok': False, 'error': str(e)})

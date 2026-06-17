@@ -25,7 +25,7 @@ export const AddTransaction = ({ open, onOpenChange }: { open: boolean; onOpenCh
 
   const reset = () => { setAmount(""); setCategory(null); setDesc(""); setKind("expense"); setDate(new Date().toISOString().slice(0,10)); };
 
-const save = () => {
+const save = async () => {
     console.log("Save button clicked! Raw amount state:", amount);
     const amt = parseFloat(amount);
     const selectedDate = new Date(date);
@@ -50,20 +50,20 @@ const save = () => {
     console.log("Validation passed! Sending payload to addTransaction...");
 
     try {
-      addTransaction({
+      await addTransaction({
         kind,
         amount: amt,
         category,
         description: desc || CATEGORIES[category].label,
         date: selectedDate.toISOString(),
       });
-      
+
       toast({ title: "Transaction saved successfully" });
       reset();
       onOpenChange(false);
     } catch (error) {
       console.error("Error inside addTransaction function:", error);
-      toast({ title: "Error processing transaction" });
+      toast({ title: "Unable to save transaction" });
     }
   };
 

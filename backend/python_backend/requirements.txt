@@ -3,3 +3,4 @@ uvicorn[standard]==0.22.0
 SQLAlchemy==1.4.54
 pydantic==2.13.4
 python-dotenv==1.0.0
+pg8000==1.30.3
