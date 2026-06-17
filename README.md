@@ -30,7 +30,7 @@ Bash: npm install
 2. Start the development server.
 Bash: npm run dev
 
-3. Access the app at: http://localhost:8080
+3. Access the app at: 
 
 
 #must keep the backend open 
